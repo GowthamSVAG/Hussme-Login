@@ -45,9 +45,10 @@ router.post("/auth", async (req, res) => {
 });
 
 // verify the token
-router.post("/data", verifyToken, (req, res) => {
-  res.json({ message: `Welcome,${req.user.email}! This is protected data` });
+router.get("/me", verifyToken, (req, res) => {
+  res.json({ message: `Welcome, ${req.user.email}! This is protected data` });
 });
+
 // Forgot Password
 router.post("/reset-password", async (req, res) => {
   const { email } = req.body;
@@ -96,6 +97,10 @@ router.post("/reset-password/:token", async (req, res) => {
   user.resetpasswordExpire = null; //removing the expiry
   await user.save();
   res.status(200).json({ message: "Password Updated Successfully" });
+});
+// Get logged-in user data
+router.get("/me", verifyToken, (req, res) => {
+  res.json({ email: req.user.email });
 });
 
 module.exports = router;
