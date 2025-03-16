@@ -11,12 +11,12 @@ router.get("/test", (req, res) =>
 );
 // Ceate a new user
 router.post("/user", async (req, res) => {
-  const { email, password } = req.body;
+  const { username, email, password } = req.body;
   const user = await User.findOne({ email });
 
   if (!user) {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ email, password: hashedPassword });
+    const newUser = new User({ username, email, password: hashedPassword });
 
     await newUser.save();
 
@@ -45,8 +45,22 @@ router.post("/auth", async (req, res) => {
 });
 
 // verify the token
-router.get("/me", verifyToken, (req, res) => {
-  res.json({ message: `Welcome, ${req.user.email}! This is protected data` });
+router.get("/me", verifyToken, async (req, res) => {
+  try {
+    // Find the complete user data to include username
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    // Return complete user data (except password)
+    res.json({
+      email: user.email,
+      username: user.username,
+      _id: user._id
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 // Forgot Password
@@ -56,9 +70,9 @@ router.post("/reset-password", async (req, res) => {
   if (!user) {
     return res.status(404).json({ message: "User not Found" });
   }
-  const token = Math.random().toString(36).slice(-8);
+  const token = Math.random().toString(36).slice(-5);
   user.resetPasswordToken = token;
-  user.resetpasswordExpire = Date.now() + 360000;
+  user.resetpasswordExpire = Date.now() + 300000; // 5 minutes in milliseconds
   await user.save();
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -67,11 +81,98 @@ router.post("/reset-password", async (req, res) => {
       pass: "mnzc jcaa sxrk gkjs",
     },
   });
+
   const message = {
-    from: "svagowtham3004@gmail.com",
+    from: '"Hussme Support" <svagowtham3004@gmail.com>',
     to: user.email,
-    subject: "password rest request",
-    text: `otp ${token}`,
+    subject: "Password Reset Request - Hussme Account",
+    text: `Dear ${user.username},\n\nYou have requested to reset your password for your Hussme account. Your verification code is: ${token}\n\nThis code will expire in 5 minutes. If you did not request this password reset, please ignore this email or contact our support team immediately.\n\nBest regards,\nThe Hussme Team`,
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Password Reset</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .logo {
+          max-width: 200px;
+          margin-bottom: 20px;
+        }
+        .content {
+          background-color: #f9f9f9;
+          border-radius: 8px;
+          padding: 30px;
+          margin-bottom: 30px;
+        }
+        .verification-code {
+          text-align: center;
+          font-size: 24px;
+          font-weight: bold;
+          letter-spacing: 4px;
+          padding: 20px;
+          margin: 20px 0;
+          background-color: #eaeaea;
+          border-radius: 8px;
+          color: #9747ff;
+        }
+        .button {
+          display: block;
+          width: 200px;
+          padding: 12px 0;
+          margin: 30px auto;
+          background-color: #9747ff;
+          color: white;
+          text-align: center;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: bold;
+        }
+        .footer {
+          text-align: center;
+          font-size: 12px;
+          color: #777777;
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #eeeeee;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Hussme Password Reset</h1>
+      </div>
+      <div class="content">
+        <p>Dear <strong>${user.username}</strong>,</p>
+        <p>We received a request to reset the password for your Hussme account. To complete the process, please use the verification code below:</p>
+        
+        <div class="verification-code">${token}</div>
+        
+        <p>This code is valid for 5 minutes. For security reasons, please do not share this code with anyone.</p>
+        
+        <p>If you did not request a password reset, please ignore this email or contact our support team immediately as your account may be at risk.</p>
+      </div>
+      
+      <p>Best regards,<br>The Hussme Team</p>
+      
+      <div class="footer">
+        <p>&copy; ${new Date().getFullYear()} Hussme. All rights reserved.</p>
+        <p>This is an automated email. Please do not reply to this message.</p>
+      </div>
+    </body>
+    </html>
+    `
   };
   transporter.sendMail(message, (err, info) => {
     if (err) {
@@ -97,10 +198,6 @@ router.post("/reset-password/:token", async (req, res) => {
   user.resetpasswordExpire = null; //removing the expiry
   await user.save();
   res.status(200).json({ message: "Password Updated Successfully" });
-});
-// Get logged-in user data
-router.get("/me", verifyToken, (req, res) => {
-  res.json({ email: req.user.email });
 });
 
 module.exports = router;
