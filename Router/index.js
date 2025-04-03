@@ -5,6 +5,10 @@ const generateToken = require("../Utils");
 const verifyToken = require("../middleware");
 const nodemailer = require("nodemailer");
 const router = express.Router();
+const companyProfileRoutes = require("./companyProfile");
+
+// Use company profile routes
+router.use("/company", companyProfileRoutes);
 
 router.get("/test", (req, res) =>
   res.json({ message: "Testing route Successfully" })
