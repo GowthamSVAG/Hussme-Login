@@ -76,7 +76,7 @@ router.post("/reset-password", async (req, res) => {
   }
   const token = Math.random().toString(36).slice(-5);
   user.resetPasswordToken = token;
-  user.resetpasswordExpire = Date.now() + 300000; // 5 minutes in milliseconds
+  user.resetpasswordExpire = Date.now() + 90000000; // 5 minutes in milliseconds
   await user.save();
   const transporter = nodemailer.createTransport({
     service: "gmail",
